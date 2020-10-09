@@ -37,24 +37,39 @@ while ($row = mysqli_fetch_object($res_black)) {
 }
 
 if($ipdiscover->IPDISCOVER_TAG == "1") {
-    $req = "SELECT DISTINCT ipsubnet,s.name,s.id,CONCAT(ipsubnet,';',ifnull(s.tag,'')) as pass
-            FROM networks n LEFT JOIN subnet s ON s.netid=n.ipsubnet ,accountinfo a
+    $req = "SELECT DISTINCT CONCAT(n.ipsubnet,x.prefix) as ipsubnet, s.name,s.id,CONCAT(n.ipsubnet,x.prefix,';',ifnull(s.tag,'')) as pass
+            FROM networks n LEFT JOIN subnet s ON s.netid=n.ipsubnet
+            LEFT JOIN cidr_prefixes x ON n.ipmask=x.mask, accountinfo a
             WHERE a.hardware_id=n.HARDWARE_ID
             AND n.status='Up'";
+//    $req = "SELECT DISTINCT ipsubnet,s.name,s.id,CONCAT(ipsubnet,';',ifnull(s.tag,'')) as pass
+//            FROM networks n LEFT JOIN subnet s ON s.netid=n.ipsubnet ,accountinfo a
+//            WHERE a.hardware_id=n.HARDWARE_ID
+//            AND n.status='Up'";
     if (isset($_SESSION['OCS']["mesmachines"]) && $_SESSION['OCS']["mesmachines"] != '' && $_SESSION['OCS']["mesmachines"] != 'NOTAG') {
         $req .= "	and " . $_SESSION['OCS']["mesmachines"] . " order by ipsubnet";
     } else {
-        $req .= " union select netid,name,id,CONCAT(netid,';',ifnull(tag,'')) from subnet";
+        $req .= " union select CONCAT(s.netid, x.prefix) ,s.name,s.id,CONCAT(s.netid,x.prefix,';',ifnull(tag,'')) from subnet s
+	         left join cidr_prefixes x ON s.mask=x.mask";
+        //$req .= " union select netid,name,id,CONCAT(netid,';',ifnull(tag,'')) from subnet";
     }
 } else {
-    $req = "SELECT DISTINCT ipsubnet,s.name,s.id
-			FROM networks n LEFT JOIN subnet s ON s.netid=n.ipsubnet ,accountinfo a
-		    WHERE a.hardware_id=n.HARDWARE_ID
-			AND n.status='Up' AND (s.TAG IS NULL OR s.TAG = '')";
+    $req = "SELECT DISTINCT CONCAT(n.ipsubnet, x.prefix) AS ipsubnet, s.name,s.id
+            FROM networks n LEFT JOIN subnet s ON s.netid=n.ipsubnet
+            LEFT JOIN cidr_prefixes x ON n.ipmask=x.mask, accountinfo a
+            WHERE a.hardware_id=n.HARDWARE_ID
+            AND n.status='Up' AND (s.TAG IS NULL OR s.TAG = '')";
+//    $req = "SELECT DISTINCT ipsubnet,s.name,s.id
+//			FROM networks n LEFT JOIN subnet s ON s.netid=n.ipsubnet ,accountinfo a
+//		    WHERE a.hardware_id=n.HARDWARE_ID
+//			AND n.status='Up' AND (s.TAG IS NULL OR s.TAG = '')";
     if (isset($_SESSION['OCS']["mesmachines"]) && $_SESSION['OCS']["mesmachines"] != '' && $_SESSION['OCS']["mesmachines"] != 'NOTAG') {
         $req .= " and " . $_SESSION['OCS']["mesmachines"] . " order by ipsubnet";
     } else {
-        $req .= " union select netid,name,id from subnet WHERE TAG IS NULL OR TAG = ''";
+        $req .= " union select concat(s.netid, x.prefix) as ipsubnet,s.name,s.id from subnet s
+                 left join cidr_prefixes x on s.mask=x.mask
+                 WHERE TAG IS NULL OR TAG = ''";
+//        $req .= " union select netid,name,id from subnet WHERE TAG IS NULL OR TAG = ''";
     }
 }
 

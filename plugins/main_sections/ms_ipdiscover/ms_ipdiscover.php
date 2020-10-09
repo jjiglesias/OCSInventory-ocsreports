@@ -117,14 +117,15 @@ if (isset($protectedPost['onglet'])) {
 				(
                     SELECT count(DISTINCT h.ID) AS c, 
                     'INVENTORIE' AS TYPE, 
-                    n.ipsubnet AS RSX, 
+                    CONCAT(n.ipsubnet,x.prefix) AS RSX, 
                     s.TAG as TAG, 
-                    CONCAT(n.ipsubnet,';',ifnull(s.tag,'')) as PASS 
+                    CONCAT(n.ipsubnet,x.prefix,';',ifnull(s.tag,'')) as PASS 
                     FROM networks n 
                     LEFT JOIN hardware h ON h.ID = n.HARDWARE_ID
                     LEFT JOIN accountinfo a ON a.HARDWARE_ID = h.ID
                     LEFT JOIN subnet s ON a.TAG = s.TAG AND s.NETID = n.IPSUBNET
-                    WHERE n.ipsubnet IN ";
+                    LEFT JOIN cidr_prefixes x ON x.mask = n.ipmask
+                    WHERE CONCAT(n.ipsubnet,x.prefix) IN ";
 
     $arg = mysql2_prepare($arg['SQL'], $arg['ARG'], $array_rsx);
 
@@ -134,19 +135,19 @@ if (isset($protectedPost['onglet'])) {
 				inv ON ipdiscover.$on=inv.$on LEFT JOIN
 				(
                     SELECT 
-                    COUNT(DISTINCT mac) AS c,
+                    COUNT(DISTINCT n.mac) AS c,
                     'IDENTIFIE' AS TYPE,
-                    netid AS RSX, 
-                    TAG,
-                    CONCAT(netid,';',ifnull(tag,'')) as PASS
-                    FROM netmap 
-                    WHERE mac IN 
+                    CONCAT(n.netid,x.prefix) AS RSX, 
+                    n.TAG,
+                    CONCAT(n.netid,x.prefix,';',ifnull(n.tag,'')) as PASS
+                    FROM netmap n LEFT JOIN cidr_prefixes x ON n.mask = x.mask
+                    WHERE n.mac IN 
                     (
                         SELECT 
                         DISTINCT(macaddr) 
                         FROM network_devices
                     ) 
-                    AND netid IN ";
+                    AND CONCAT(n.netid,x.prefix) IN ";
 
     $arg = mysql2_prepare($arg['SQL'], $arg['ARG'], $array_rsx);
 
@@ -157,17 +158,18 @@ if (isset($protectedPost['onglet'])) {
                     SELECT 
                     COUNT(DISTINCT n.mac) AS c, 
                     'NON IDENTIFIE' AS TYPE, 
-                    n.netid AS RSX, 
+                    CONCAT(n.netid,x.prefix) AS RSX, 
                     n.TAG,
-                    CONCAT(n.netid,';',ifnull(n.tag,'')) as PASS
+                    CONCAT(n.netid,x.prefix,';',ifnull(n.tag,'')) as PASS
                     FROM netmap n 
                     LEFT JOIN networks ns ON ns.macaddr=n.mac
                     LEFT JOIN accountinfo a ON a.TAG = n.TAG 
+                    LEFT JOIN cidr_prefixes x ON n.mask = x.mask
                     WHERE n.mac NOT IN ( 
                         SELECT DISTINCT(macaddr) FROM network_devices 
                     ) 
                     AND (ns.macaddr IS NULL) 
-                    AND n.netid IN ";
+                    AND CONCAT(n.netid,x.prefix) IN ";
 
     $arg = mysql2_prepare($arg['SQL'], $arg['ARG'], $array_rsx);
 

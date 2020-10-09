@@ -174,20 +174,21 @@ if (is_defined($protectedPost['MODIF'])) {
     }
     if (isset($protectedGet['value'])) {
         $explode = explode(";", $protectedGet['value']);
-        $value_preg = preg_replace("/[^A-zA-Z0-9\._]/", "", $explode[0]);
+        $value_preg = preg_replace("/[^A-zA-Z0-9\._\/]/", "", $explode[0]);
         $tag = addslashes($explode[1]);
 
         if ($protectedGet['prov'] == "no_inv") {
             $title = $l->g(947);
             $sql = "SELECT 
-                    ip, mac, mask, date, name, n.TAG
+                    n.ip, n.mac, n.mask, n.date, n.name, n.TAG
                     FROM netmap n 
                     LEFT JOIN networks ns ON ns.macaddr=n.mac
+                    LEFT JOIN cidr_prefixes x ON n.mask=x.mask
                     WHERE n.mac NOT IN ( 
                         SELECT DISTINCT(macaddr) FROM network_devices 
                     ) 
                     AND (ns.macaddr IS NULL) 
-                    AND n.netid IN ('%s')";
+                    AND CONCAT(n.netid,x.prefix) IN ('%s')";
             if($tag != "") {
                 $sql .= " AND n.TAG = '%s'";
             }
@@ -213,7 +214,8 @@ if (is_defined($protectedPost['MODIF'])) {
             $title = $l->g(948);
             $sql = "SELECT n.ID,n.TYPE,n.DESCRIPTION,a.IP,a.MAC,a.MASK,a.NETID,a.NAME,a.date,n.USER
                     FROM network_devices n LEFT JOIN netmap a ON a.mac=n.macaddr
-                    WHERE netid = '%s'";
+                    LEFT JOIN cidr_prefixes x ON a.mask=x.mask
+                    WHERE CONCAT(a.netid,x.prefix) = '%s'";
             if($tag != "") {
                 $sql .= " AND TAG = '%s'";
             }
@@ -290,7 +292,7 @@ if (is_defined($protectedPost['MODIF'])) {
         $tab_options['LBL']['MAC'] = $l->g(95);
 
         $list_col_cant_del = array($l->g(66) => $l->g(66), 'SUP' => 'SUP', 'CHECK' => 'CHECK', 'MODIF' => 'MODIF');
-        $table_name = "IPDISCOVER_" . $protectedGet['prov'] . "_" . str_replace(" ", "",str_replace(".", "",$value_preg));
+        $table_name = "IPDISCOVER_" . $protectedGet['prov'] . "_" . str_replace(" ", "",str_replace(str_split('./'), "",$value_preg));
         $tab_options['table_name'] = $table_name;
         $form_name = $table_name;
         $tab_options['form_name'] = $form_name;

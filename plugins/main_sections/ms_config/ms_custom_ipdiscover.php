@@ -53,7 +53,9 @@ if (isset($protectedGet['idchecked']) && is_numeric($protectedGet['idchecked']))
     $arg = $protectedGet['idchecked'];
     $resInt = mysql2_query_secure($sql, $_SESSION['OCS']["readServer"], $arg);
     while ($valInt = mysqli_fetch_array($resInt)) {
-        $sql = "SELECT ipsubnet FROM networks WHERE ipaddress='%s' AND hardware_id=%s";
+        $sql = "SELECT CONCAT(ns.ipsubnet,x.prefix) as ipsubnet
+                FROM networks ns LEFT JOIN cidr_prefixes x ON ns.ipmask=x.mask
+                WHERE ns.ipaddress='%s' AND ns.hardware_id=%s";
         $arg = array($valInt["ipaddress"], $protectedGet["idchecked"]);
         $res = mysql2_query_secure($sql, $_SESSION['OCS']["readServer"], $arg);
         while ($val = mysqli_fetch_array($res)) {
